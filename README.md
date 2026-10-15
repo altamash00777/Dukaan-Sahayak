@@ -32,7 +32,7 @@ Dukaan Sahayak is designed to help small shopkeepers, local vendors, and busines
 ### 1. Clone the repository
 
 ```bash
-git clone <(https://github.com/altamash00777/Dukaan-Sahayak)>
+git clone https://github.com/altamash00777/Dukaan-Sahayak
 cd dukaan-sahayak
 ```
 
