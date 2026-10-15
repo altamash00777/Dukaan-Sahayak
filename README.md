@@ -1,4 +1,4 @@
-<<<<<<< HEAD
+
 # 🛒 Dukaan Sahayak — AI-Powered Shop Assistant
 
 > *Apni Dukaan, Digital Banao*
