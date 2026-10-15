@@ -1,0 +1,172 @@
+/* Mobile Sidebar Overlay */
+.sidebar-overlay {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(15, 23, 42, 0.5);
+  backdrop-filter: blur(2px);
+  z-index: 45;
+}
+
+.hamburger-btn {
+  display: none;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-primary);
+  padding: 0.4rem;
+  border-radius: var(--radius-sm);
+  align-items: center;
+  justify-content: center;
+}
+
+.hamburger-btn:hover {
+  background-color: var(--bg-hover);
+}
+
+/* Medium Tablets & Mobile: max-width 768px */
+@media (max-width: 768px) {
+  .hamburger-btn {
+    display: inline-flex;
+  }
+
+  .navbar-brand-mobile {
+    display: flex;
+  }
+
+  .sidebar {
+    transform: translateX(-100%);
+    box-shadow: 4px 0 20px rgba(0, 0, 0, 0.2);
+  }
+
+  .sidebar.open {
+    transform: translateX(0);
+  }
+
+  .sidebar-overlay.open {
+    display: block;
+  }
+
+  .main-wrapper {
+    margin-left: 0;
+  }
+
+  .main-content {
+    padding: 1.25rem 1rem;
+  }
+
+  .dashboard-split-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .billing-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .billing-summary-box {
+    position: static;
+  }
+
+  .modal {
+    width: 95%;
+    max-height: 92vh;
+  }
+
+  .modal-body {
+    padding: 1rem;
+  }
+
+  .invoice-preview {
+    padding: 1.25rem;
+  }
+
+  .invoice-preview-header {
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .invoice-meta-info {
+    text-align: left;
+  }
+
+  .invoice-customer-details {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .invoice-totals {
+    width: 100%;
+  }
+
+  .invoice-actions {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .invoice-actions .btn {
+    width: 100%;
+  }
+
+  /* Chat mobile styles */
+  .chat-layout {
+    flex-direction: column;
+    height: auto;
+  }
+
+  .chat-quick-panel {
+    width: 100%;
+  }
+}
+
+/* Small Phones: max-width 480px */
+@media (max-width: 480px) {
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .stat-card {
+    padding: 1rem 1.25rem;
+  }
+
+  .stat-value {
+    font-size: 1.45rem;
+  }
+
+  .navbar {
+    padding: 0 1rem;
+  }
+
+  .navbar-shop-name span {
+    display: none;
+  }
+
+  .page-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .auth-card {
+    padding: 1.5rem 1.25rem;
+  }
+
+  .item-row {
+    flex-wrap: wrap;
+  }
+
+  .item-row-info {
+    flex: 1 1 100%;
+    margin-bottom: 0.25rem;
+  }
+
+  .item-row-qty {
+    flex: 1;
+  }
+
+  .chart-wrapper {
+    height: 240px;
+  }
+}
