@@ -1,0 +1,24 @@
+{
+  "name": "dukaan-sahayak",
+  "version": "1.0.0",
+  "description": "AI-powered business assistant for Kirana shops, tailors and street vendors",
+  "private": true,
+  "scripts": {
+    "install:all": "npm install --prefix server && npm install --prefix client",
+    "dev:server": "npm run dev --prefix server",
+    "dev:client": "npm run dev --prefix client",
+    "build:client": "npm run build --prefix client",
+    "start:server": "npm start --prefix server"
+  },
+  "keywords": [
+    "kirana",
+    "ai",
+    "shop-management",
+    "groq",
+    "whatsapp",
+    "hindi",
+    "hinglish"
+  ],
+  "author": "MLH Hackathon 2026",
+  "license": "MIT"
+}

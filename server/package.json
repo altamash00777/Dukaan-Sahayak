@@ -1,0 +1,46 @@
+{
+  "name": "dukaan-sahayak-server",
+  "version": "1.0.0",
+  "description": "AI-powered shop assistant for Indian Kirana stores",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js"
+  },
+  "keywords": [
+    "kirana",
+    "ai",
+    "retail",
+    "billing",
+    "inventory",
+    "groq",
+    "whatsapp",
+    "express",
+    "mongodb"
+  ],
+  "author": "Dukaan Sahayak Team",
+  "license": "ISC",
+  "dependencies": {
+    "@google/generative-ai": "^0.24.1",
+    "axios": "^1.7.9",
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "express-rate-limit": "^7.5.0",
+    "form-data": "^4.0.1",
+    "groq-sdk": "^0.13.0",
+    "helmet": "^8.0.0",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.9.5",
+    "morgan": "^1.10.0",
+    "multer": "^2.4.0",
+    "pdfkit": "^0.16.0",
+    "twilio": "^6.2.0",
+    "uuid": "^11.0.5",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.9"
+  }
+}
