@@ -11,6 +11,17 @@ process.on('uncaughtException', (err) => {
   process.exit(1);
 });
 
+
+app.get("/", (req, res) => {
+  res.json({
+    success: true,
+    message: "Dukaan Sahayak API is running"
+  });
+});
+
+
+
+
 const PORT = process.env.PORT || 5000;
 
 // Connect Database and launch server

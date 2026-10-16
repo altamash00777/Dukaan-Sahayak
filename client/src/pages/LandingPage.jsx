@@ -209,9 +209,9 @@ export default function LandingPage() {
         </Link>
 
         <nav className="ds-nav-links" aria-label="Main navigation">
-          <a href="#features">Features</a>
+          {/* <a href="#features">Features</a>
           <a href="#how-it-works">How it works</a>
-          <a href="#benefits">Why Dukaan Sahayak</a>
+          <a href="#benefits">Why Dukaan Sahayak</a>  */}
         </nav>
 
         <div className="ds-nav-actions">
