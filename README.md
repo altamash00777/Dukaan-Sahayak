@@ -1,6 +1,8 @@
 
 # 🛒 Dukaan Sahayak — AI-Powered Shop Assistant
 
+deployed link-https://dukaan-sahayak.vercel.app/
+
 > *Apni Dukaan, Digital Banao*
 
 **Dukaan Sahayak** helps Kirana shops, tailors, and street vendors manage their business digitally — without needing accounting knowledge. Shopkeepers can speak or type in Hindi, Hinglish, or English; the AI understands, creates bills, tracks inventory, maintains a digital Khata, and sends invoices via WhatsApp.
