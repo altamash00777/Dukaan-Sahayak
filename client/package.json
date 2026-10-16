@@ -12,11 +12,12 @@
     "audit": "^0.0.6",
     "axios": "^1.7.9",
     "fix": "^0.0.6",
-    "lucide-react": "^1.16.0",
+    "framer-motion": "^14.3.0",
+    "lucide-react": "^1.57.0",
     "npm": "^11.21.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "react-router-dom": "^6.28.0",
+    "react-router-dom": "^6.30.6",
     "recharts": "^2.13.3"
   },
   "devDependencies": {

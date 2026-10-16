@@ -1,0 +1,242 @@
+.ai-chat-page,
+.ai-chat-page * {
+  box-sizing: border-box;
+}
+
+.ai-chat-page {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  margin: 0;
+  padding: 24px;
+  overflow-x: hidden;
+  background: #f5f8ff;
+  color: #172b4d;
+  font-family: "DM Sans", sans-serif;
+}
+
+/* Page heading */
+.ai-chat-page .page-header {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 0 0 22px;
+}
+
+.ai-chat-page .page-title {
+  margin: 0;
+  font-size: clamp(22px, 2vw, 29px);
+  line-height: 1.3;
+  font-weight: 800;
+  color: #172b4d;
+}
+
+.ai-chat-page .page-subtitle {
+  margin: 7px 0 0;
+  color: #718096;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+/* Chat + quick commands */
+.ai-chat-page .ai-chat-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 290px;
+  align-items: stretch;
+  gap: 20px;
+  width: 100%;
+  min-width: 0;
+}
+
+.ai-chat-page .ai-chat-main {
+  min-width: 0;
+  width: 100%;
+  height: min(690px, calc(100vh - 190px));
+  min-height: 400px;
+  overflow: hidden;
+  border: 1px solid #e3eaf5;
+  border-radius: 18px;
+  background: #ffffff;
+  box-shadow: 0 5px 22px rgba(34, 69, 125, 0.06);
+}
+
+/* Keep nested chat components within the main panel */
+.ai-chat-page .ai-chat-main > * {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+/* Quick command panel */
+.ai-chat-page .ai-quick-panel {
+  width: 100%;
+  min-width: 0;
+  align-self: start;
+  padding: 16px;
+  border: 1px solid #e3eaf5;
+  border-radius: 18px;
+  background: #ffffff;
+  box-shadow: 0 5px 22px rgba(34, 69, 125, 0.05);
+}
+
+.ai-chat-page .ai-quick-header {
+  margin-bottom: 14px;
+}
+
+.ai-chat-page .ai-quick-header-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #245bc5;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.ai-chat-page .ai-quick-header-sub {
+  margin-top: 6px;
+  color: #8794a8;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+/* Quick action buttons */
+.ai-chat-page .ai-quick-btn {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  width: 100%;
+  min-width: 0;
+  padding: 12px 10px;
+  margin-top: 9px;
+  border: 1px solid #e8eef8;
+  border-radius: 12px;
+  background: #ffffff;
+  color: #243751;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s, transform 0.2s;
+}
+
+.ai-chat-page .ai-quick-btn:hover:not(:disabled) {
+  background: #f2f7ff;
+  border-color: #bdd3ff;
+  transform: translateY(-1px);
+}
+
+.ai-chat-page .ai-quick-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.ai-chat-page .ai-quick-btn-icon {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  flex: 0 0 38px;
+  border-radius: 11px;
+  background: #edf4ff;
+  color: #2864d7;
+}
+
+.ai-chat-page .ai-quick-btn > div:last-child {
+  min-width: 0;
+}
+
+.ai-chat-page .ai-quick-btn-title {
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+.ai-chat-page .ai-quick-btn-sub {
+  margin-top: 3px;
+  color: #8491a5;
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+/* Alert spacing */
+.ai-chat-page > .alert {
+  margin-bottom: 16px;
+}
+
+/* =====================================
+   TABLET
+   ===================================== */
+
+@media (max-width: 1100px) {
+  .ai-chat-page {
+    padding: 20px;
+  }
+
+  .ai-chat-page .ai-chat-grid {
+    grid-template-columns: minmax(0, 1fr) 250px;
+    gap: 14px;
+  }
+
+  .ai-chat-page .ai-quick-panel {
+    padding: 12px;
+  }
+}
+
+/* =====================================
+   MOBILE
+   ===================================== */
+
+@media (max-width: 760px) {
+  .ai-chat-page {
+    padding: 14px;
+  }
+
+  .ai-chat-page .page-header {
+    align-items: flex-start;
+    margin-bottom: 16px;
+  }
+
+  .ai-chat-page .page-title {
+    font-size: 21px;
+  }
+
+  .ai-chat-page .page-subtitle {
+    font-size: 12px;
+  }
+
+  .ai-chat-page .ai-chat-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .ai-chat-page .ai-chat-main {
+    height: 60vh;
+    height: 60dvh;
+    min-height: 360px;
+  }
+
+  .ai-chat-page .ai-quick-panel {
+    padding: 14px;
+  }
+
+  .ai-chat-page .ai-quick-btn {
+    padding: 11px;
+  }
+}
+
+@media (max-width: 420px) {
+  .ai-chat-page {
+    padding: 10px;
+  }
+
+  .ai-chat-page .page-header {
+    gap: 8px;
+  }
+
+  .ai-chat-page .page-title {
+    font-size: 18px;
+  }
+
+  .ai-chat-page .ai-chat-main {
+    min-height: 330px;
+  }
+}

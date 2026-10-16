@@ -68,7 +68,6 @@ const callGemmaAPI = (apiKey, messages, maxTokens = 1000) => {
       res.on('data', (chunk) => (data += chunk));
       res.on('end', () => {
         try {
-          // Gemini wraps response in an array sometimes
           const parsed = JSON.parse(data);
           const result = Array.isArray(parsed) ? parsed[0] : parsed;
 
@@ -78,11 +77,9 @@ const callGemmaAPI = (apiKey, messages, maxTokens = 1000) => {
           }
 
           const content = result.choices?.[0]?.message?.content || '';
-          // Gemma 4 uses <thought>...</thought> for chain-of-thought reasoning
-          // The actual answer comes AFTER the </thought> tag
+         
           let cleaned = content;
           if (content.includes('</thought>')) {
-            // Take everything after the last </thought> tag
             const afterThought = content.split('</thought>').pop() || '';
             cleaned = afterThought.trim();
             // If nothing after thought, strip the thought block and use what's inside
@@ -90,7 +87,6 @@ const callGemmaAPI = (apiKey, messages, maxTokens = 1000) => {
               cleaned = content.replace(/<thought>[\s\S]*?<\/thought>/g, '').trim();
             }
           }
-          // Final fallback — strip any remaining thought tags
           cleaned = cleaned.replace(/<\/?thought>/g, '').trim();
           resolve(cleaned || 'Maaf kijiye, response generate nahi ho saka. Dobara try karein.');
         } catch (e) {
@@ -217,7 +213,7 @@ const detectExpense = async (shopId, userId, userMessage) => {
  * @param {Array}  conversationHistory - [{role, content}]
  * @returns {Promise<{message, toolCalls, structuredData}>}
  */
-const processMessage = async (shopId, userId, userMessage, conversationHistory = []) => {
+const processMessage = async (shopId, userId, userMessage, conversationHistory = [], systemNote = '') => {
   const apiKey = process.env.GEMINI_API_KEY;
 
   // Graceful offline fallback
@@ -243,7 +239,10 @@ const processMessage = async (shopId, userId, userMessage, conversationHistory =
     const shopContext = await buildShopContext(shopId, userMessage);
 
     // Step 3: Build message array for Gemma
-    const systemWithContext = SYSTEM_PROMPT + shopContext;
+    // If a systemNote is provided (e.g. from GST chatbot), prepend it to override default context
+    const systemWithContext = systemNote
+      ? systemNote  // GST chatbot sends its own full system prompt
+      : SYSTEM_PROMPT + shopContext;
 
     const messages = [
       { role: 'system', content: systemWithContext },
@@ -277,7 +276,6 @@ const processMessage = async (shopId, userId, userMessage, conversationHistory =
       }
     }
 
-    // Step 6: Log action
     try {
       await AIActionLog.create({
         shopId,
@@ -323,7 +321,6 @@ const processMessage = async (shopId, userId, userMessage, conversationHistory =
       });
     } catch (_) {}
 
-    // User-friendly error message in Hinglish
     return {
       message:
         'Maaf kijiye, abhi AI se connect karne mein dikkat aa rahi hai. Thodi der baad try karein. 🙏',

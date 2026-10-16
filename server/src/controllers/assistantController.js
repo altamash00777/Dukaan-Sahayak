@@ -8,7 +8,7 @@ const groqService = require('../services/groqService');
  */
 const sendMessage = async (req, res, next) => {
   try {
-    const { message, conversationHistory } = req.body;
+    const { message, conversationHistory, systemNote } = req.body;
 
     if (!message || typeof message !== 'string') {
       return res.status(400).json({
@@ -21,7 +21,8 @@ const sendMessage = async (req, res, next) => {
       req.shopId,
       req.user._id,
       message,
-      Array.isArray(conversationHistory) ? conversationHistory : []
+      Array.isArray(conversationHistory) ? conversationHistory : [],
+      typeof systemNote === 'string' ? systemNote : ''
     );
 
     res.status(200).json({
