@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { Link } from 'react-router-dom';
+
+import React, { useState, useEffect, useCallback, useRef } from "react";
+import { Link } from "react-router-dom";
 import {
   IndianRupee,
   TrendingUp,
@@ -7,10 +8,12 @@ import {
   AlertTriangle,
   Receipt,
   ArrowRight,
-  Package,
   BookOpen,
   RefreshCw,
-} from 'lucide-react';
+  Package,
+  Trash2,
+} from "lucide-react";
+
 import {
   LineChart,
   Line,
@@ -19,127 +22,362 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-} from 'recharts';
-import StatCard from '../components/StatCard';
-import LoadingSpinner from '../components/LoadingSpinner';
-import Alert from '../components/Alert';
-import { reports as reportsApi, inventory as inventoryApi, invoices as invoicesApi, customers as customersApi } from '../services/api';
+} from "recharts";
+
+import StatCard from "../components/StatCard";
+import LoadingSpinner from "../components/LoadingSpinner";
+import Alert from "../components/Alert";
+
+import {
+  reports as reportsApi,
+  inventory as inventoryApi,
+  invoices as invoicesApi,
+  customers as customersApi,
+} from "../services/api";
+
+// --------------------------------------------------
+// Helpers
+// --------------------------------------------------
+
+const money = (value) =>
+  Number(value ?? 0).toLocaleString("en-IN", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  });
+
+const unwrap = (response) =>
+  response?.data?.data ?? response?.data ?? null;
+
+const extractArray = (value, keys = []) => {
+  if (Array.isArray(value)) return value;
+
+  if (!value || typeof value !== "object") return [];
+
+  for (const key of keys) {
+    if (Array.isArray(value[key])) return value[key];
+  }
+
+  return [];
+};
+
+const formatDate = (value) => {
+  if (!value) return "—";
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) return "—";
+
+  return date.toLocaleString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+};
+
+const getInvoiceAmount = (invoice) =>
+  Number(
+    invoice.total ??
+      invoice.totalAmount ??
+      invoice.grandTotal ??
+      0
+  );
+
+const getPaymentMethod = (invoice) =>
+  invoice.paymentMethod ?? invoice.paymentMode ?? "cash";
+
+const getCustomerName = (invoice) =>
+  invoice.customerSnapshot?.name ??
+  invoice.customer?.name ??
+  invoice.customerName ??
+  "Cash Customer";
+
+const getCustomerBalance = (customer) =>
+  Number(
+    customer.outstandingBalance ??
+      customer.balance ??
+      customer.creditBalance ??
+      0
+  );
+
+const getStock = (product) =>
+  Number(
+    product.currentStock ??
+      product.stock ??
+      product.stockQuantity ??
+      product.quantity ??
+      0
+  );
+
+const getChartData = (response) => {
+  let data = response;
+
+  if (data && !Array.isArray(data)) {
+    data =
+      data.chartData ??
+      data.salesChart ??
+      data.sales ??
+      data.data?.chartData ??
+      data.data ??
+      [];
+  }
+
+  if (!Array.isArray(data)) return [];
+
+  return data.map((item, index) => ({
+    ...item,
+    day: item.day ?? item.date ?? item.label ?? `Day ${index + 1}`,
+    sales: Number(
+      item.sales ?? item.totalSales ?? item.revenue ?? 0
+    ),
+    profit: Number(item.profit ?? item.totalProfit ?? 0),
+  }));
+};
+
+// --------------------------------------------------
+// Dashboard
+// --------------------------------------------------
 
 const Dashboard = () => {
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState("");
+  const [lastUpdated, setLastUpdated] = useState(null);
+
+  const hasLoaded = useRef(false);
+  const requestInProgress = useRef(false);
+
   const [stats, setStats] = useState({
-    todaySales: 18450,
-    todayProfit: 3280,
-    totalCustomers: 142,
-    lowStockCount: 4,
-    salesTrend: 8.5,
+    todaySales: 0,
+    todayProfit: 0,
+    totalCustomers: 0,
+    lowStockCount: 0,
+    salesTrend: 0,
   });
-  const [salesChartData, setSalesChartData] = useState([
-    { day: 'Mon', sales: 12000, profit: 2100 },
-    { day: 'Tue', sales: 15400, profit: 2800 },
-    { day: 'Wed', sales: 14200, profit: 2500 },
-    { day: 'Thu', sales: 19100, profit: 3400 },
-    { day: 'Fri', sales: 17800, profit: 3100 },
-    { day: 'Sat', sales: 22400, profit: 4100 },
-    { day: 'Sun', sales: 18450, profit: 3280 },
-  ]);
-  const [lowStockAlerts, setLowStockAlerts] = useState([
-    { _id: '1', name: 'Aashirvaad Atta 10kg', currentStock: 3, reorderLevel: 10, unit: 'bags' },
-    { _id: '2', name: 'Fortune Mustard Oil 1L', currentStock: 4, reorderLevel: 15, unit: 'pouches' },
-    { _id: '3', name: 'Tata Salt 1kg', currentStock: 5, reorderLevel: 25, unit: 'packets' },
-    { _id: '4', name: 'Maggi 2-Minute Noodles 70g', currentStock: 8, reorderLevel: 40, unit: 'packs' },
-  ]);
-  const [recentInvoices, setRecentInvoices] = useState([
-    { _id: 'INV-1092', customerName: 'Sunil Sharma', totalAmount: 850, paymentMode: 'cash', createdAt: new Date() },
-    { _id: 'INV-1091', customerName: 'Pooja Verma', totalAmount: 1420, paymentMode: 'upi', createdAt: new Date(Date.now() - 3600000) },
-    { _id: 'INV-1090', customerName: 'Rajesh Gupta', totalAmount: 2300, paymentMode: 'credit', createdAt: new Date(Date.now() - 7200000) },
-    { _id: 'INV-1089', customerName: 'Amit Singh', totalAmount: 430, paymentMode: 'upi', createdAt: new Date(Date.now() - 10800000) },
-    { _id: 'INV-1088', customerName: 'Walk-in Customer', totalAmount: 120, paymentMode: 'cash', createdAt: new Date(Date.now() - 14400000) },
-  ]);
-  const [pendingKhata, setPendingKhata] = useState([
-    { _id: 'c1', name: 'Rajesh Gupta', phone: '9812345678', balance: 4500 },
-    { _id: 'c2', name: 'Vikas Tiwari', phone: '9898765432', balance: 2150 },
-    { _id: 'c3', name: 'Sanjay Kumar', phone: '9845012345', balance: 1800 },
-  ]);
+
+  const [salesChartData, setSalesChartData] = useState([]);
+  const [lowStockAlerts, setLowStockAlerts] = useState([]);
+  const [recentInvoices, setRecentInvoices] = useState([]);
+  const [pendingKhata, setPendingKhata] = useState([]);
+  const [deletingId, setDeletingId] = useState(null);
+
+  // Delete an invoice from the database.
+  const handleDeleteInvoice = async (invoice) => {
+    const label = invoice.invoiceNumber || String(invoice._id).slice(-6);
+    const approved = window.confirm(
+      `Delete invoice #${label}? This action cannot be undone.`
+    );
+    if (!approved) return;
+
+    setDeletingId(invoice._id);
+    try {
+      await invoicesApi.deleteInvoice(invoice._id);
+      setRecentInvoices((prev) =>
+        prev.filter((item) => item._id !== invoice._id)
+      );
+    } catch (err) {
+      console.error("Failed to delete invoice:", err);
+      setError("Could not delete invoice. Try again.");
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   const fetchDashboardData = useCallback(async () => {
-    try {
-      // Execute calls in parallel
-      const [dailyRes, alertsRes, chartRes, invoicesRes, customersRes] = await Promise.allSettled([
-        reportsApi.getDaily(),
-        inventoryApi.getAlerts(),
-        reportsApi.getSalesChart(7),
-        invoicesApi.getAll({ limit: 5 }),
-        customersApi.getAll(),
-      ]);
+    // Prevent overlapping refresh requests.
+    if (requestInProgress.current) return;
 
-      if (dailyRes.status === 'fulfilled' && dailyRes.value.data) {
-        const d = dailyRes.value.data?.data || dailyRes.value.data;
-        setStats((prev) => ({
-          ...prev,
-          todaySales: d.totalSales !== undefined ? d.totalSales : prev.todaySales,
-          todayProfit: d.totalProfit !== undefined ? d.totalProfit : prev.todayProfit,
-          totalCustomers: d.customerCount !== undefined ? d.customerCount : prev.totalCustomers,
-          salesTrend: d.salesTrend !== undefined ? d.salesTrend : prev.salesTrend,
+    requestInProgress.current = true;
+
+    if (hasLoaded.current) {
+      setRefreshing(true);
+    }
+
+    const requests = [
+      ["daily sales", () => reportsApi.getDaily()],
+      ["stock alerts", () => inventoryApi.getAlerts()],
+      ["sales chart", () => reportsApi.getSalesChart(7)],
+      [
+        "recent invoices",
+        () => invoicesApi.getAll({ page: 1, limit: 50 }),
+      ],
+      ["customers", () => customersApi.getAll()],
+    ];
+
+    try {
+      const results = await Promise.allSettled(
+        requests.map(([, request]) => request())
+      );
+
+      const failures = [];
+
+      const readResult = (index) => {
+        const result = results[index];
+
+        if (result.status === "rejected") {
+          failures.push(requests[index][0]);
+
+          console.error(
+            `Failed to fetch ${requests[index][0]}:`,
+            result.reason
+          );
+
+          return { ok: false, data: null };
+        }
+
+        return {
+          ok: true,
+          data: unwrap(result.value),
+        };
+      };
+
+      const dailyResult = readResult(0);
+      const alertsResult = readResult(1);
+      const chartResult = readResult(2);
+      const invoicesResult = readResult(3);
+      const customersResult = readResult(4);
+
+      // Today's sales and profit come from the backend report.
+      if (dailyResult.ok) {
+        const daily = dailyResult.data ?? {};
+
+        setStats((previous) => ({
+          ...previous,
+          todaySales: Number(
+            daily.todaySales ??
+              daily.totalSales ??
+              daily.sales ??
+              0
+          ),
+          todayProfit: Number(
+            daily.todayProfit ??
+              daily.totalProfit ??
+              daily.profit ??
+              0
+          ),
+          salesTrend: Number(daily.salesTrend ?? 0),
         }));
       }
 
-      if (alertsRes.status === 'fulfilled' && alertsRes.value.data) {
-        const alerts = alertsRes.value.data?.data || alertsRes.value.data?.alerts || alertsRes.value.data;
-        if (Array.isArray(alerts) && alerts.length > 0) {
-          setLowStockAlerts(alerts);
-          setStats((prev) => ({ ...prev, lowStockCount: alerts.length }));
-        }
+      // Low-stock alerts.
+      if (alertsResult.ok) {
+        const alerts = extractArray(alertsResult.data, [
+          "alerts",
+          "products",
+          "items",
+        ]);
+
+        setLowStockAlerts(alerts);
+
+        setStats((previous) => ({
+          ...previous,
+          lowStockCount: alerts.length,
+        }));
       }
 
-      if (chartRes.status === 'fulfilled' && chartRes.value.data) {
-        const cData = chartRes.value.data?.data?.chartData || chartRes.value.data?.data || chartRes.value.data?.chartData || chartRes.value.data;
-        if (Array.isArray(cData) && cData.length > 0) {
-          setSalesChartData(cData);
-        }
+      // Seven-day sales chart.
+      if (chartResult.ok) {
+        setSalesChartData(getChartData(chartResult.data));
       }
 
-      if (invoicesRes.status === 'fulfilled' && invoicesRes.value.data) {
-        const invs = invoicesRes.value.data?.data || invoicesRes.value.data?.invoices || invoicesRes.value.data;
-        if (Array.isArray(invs) && invs.length > 0) {
-          setRecentInvoices(invs.slice(0, 5));
-        }
+      // Recent invoices — show ALL invoices from the database.
+      if (invoicesResult.ok) {
+        const invoices = extractArray(invoicesResult.data, [
+          "invoices",
+          "items",
+          "results",
+        ]);
+
+        const sortedInvoices = invoices
+          .sort(
+            (a, b) =>
+              new Date(b.createdAt ?? b.date ?? 0).getTime() -
+              new Date(a.createdAt ?? a.date ?? 0).getTime()
+          );
+
+        setRecentInvoices(sortedInvoices.slice(0, 10));
       }
 
-      if (customersRes.status === 'fulfilled' && customersRes.value.data) {
-        const custs = customersRes.value.data?.data || customersRes.value.data?.customers || customersRes.value.data;
-        if (Array.isArray(custs)) {
-          const debtors = custs.filter((c) => (c.outstandingBalance || c.balance || 0) > 0);
-          if (debtors.length > 0) {
-            setPendingKhata(debtors.slice(0, 4));
-          }
-          setStats((prev) => ({
-            ...prev,
-            totalCustomers: custs.length || prev.totalCustomers,
-          }));
-        }
+      // Customer count and outstanding balances.
+      if (customersResult.ok) {
+        const customers = extractArray(customersResult.data, [
+          "customers",
+          "items",
+          "results",
+        ]);
+
+        const debtors = customers
+          .filter(
+            (customer) => getCustomerBalance(customer) > 0
+          )
+          .sort(
+            (a, b) =>
+              getCustomerBalance(b) - getCustomerBalance(a)
+          );
+
+        setPendingKhata(debtors.slice(0, 4));
+
+        setStats((previous) => ({
+          ...previous,
+          totalCustomers: customers.length,
+        }));
       }
+
+      setError(
+        failures.length
+          ? `Unable to load ${failures.join(
+              ", "
+            )}. Check the backend connection and refresh.`
+          : ""
+      );
+
+      setLastUpdated(new Date());
+      hasLoaded.current = true;
     } catch (err) {
-      console.error('Failed to load live dashboard data:', err);
+      console.error("Dashboard loading failed:", err);
+      setError("Unable to refresh the dashboard. Please try again.");
     } finally {
+      requestInProgress.current = false;
       setLoading(false);
+      setRefreshing(false);
     }
   }, []);
 
+  // Initial fetch and automatic refresh.
   useEffect(() => {
     fetchDashboardData();
 
-    // Auto-refresh every 5 minutes
-    const interval = setInterval(() => {
-      fetchDashboardData();
-    }, 5 * 60 * 1000);
+    const intervalId = setInterval(
+      fetchDashboardData,
+      60 * 1000
+    );
 
-    return () => clearInterval(interval);
+    return () => clearInterval(intervalId);
+  }, [fetchDashboardData]);
+
+  // Refresh immediately after a successful invoice confirmation.
+  useEffect(() => {
+    const handleInvoiceSaved = () => {
+      fetchDashboardData();
+    };
+
+    window.addEventListener(
+      "billing:invoice-saved",
+      handleInvoiceSaved
+    );
+
+    return () => {
+      window.removeEventListener(
+        "billing:invoice-saved",
+        handleInvoiceSaved
+      );
+    };
   }, [fetchDashboardData]);
 
   if (loading) {
-    return <LoadingSpinner message="Dukaan ka hisaab load ho raha hai..." />;
+    return (
+      <LoadingSpinner message="Dukaan ka hisaab load ho raha hai..." />
+    );
   }
 
   return (
@@ -147,27 +385,62 @@ const Dashboard = () => {
       {/* Header */}
       <div className="page-header">
         <div>
-          <h1 className="page-title">Shop Dashboard / दुकान डैशबोर्ड</h1>
-          <p className="page-subtitle">Aapki dukaan ka live karobar aur stock overview</p>
+          <h1 className="page-title">
+            Shop Dashboard / दुकान डैशबोर्ड
+          </h1>
+
+          <p className="page-subtitle">
+            Aapki dukaan ka sales aur stock overview
+          </p>
+
+          {lastUpdated && (
+            <p
+              style={{
+                fontSize: "0.78rem",
+                color: "var(--text-secondary)",
+                marginTop: "0.35rem",
+              }}
+            >
+              Last updated: {lastUpdated.toLocaleTimeString("en-IN")}
+              {" · "}Auto-refresh every 60 seconds
+            </p>
+          )}
         </div>
-        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+
+        <div
+          style={{
+            display: "flex",
+            gap: "0.75rem",
+            alignItems: "center",
+            flexWrap: "wrap",
+          }}
+        >
           <button
             type="button"
             className="btn btn-outline btn-sm"
             onClick={fetchDashboardData}
-            title="Refresh Dashboard"
+            disabled={refreshing}
           >
-            <RefreshCw size={14} /> Refresh
+            <RefreshCw size={14} />
+            {refreshing ? "Refreshing..." : "Refresh"}
           </button>
+
           <Link to="/billing" className="btn btn-primary btn-sm">
-            <Receipt size={16} /> New Bill (+ बिल)
+            <Receipt size={16} />
+            New Bill (+ बिल)
           </Link>
         </div>
       </div>
 
-      {error && <Alert type="error" message={error} onClose={() => setError('')} />}
+      {error && (
+        <Alert
+          type="error"
+          message={error}
+          onClose={() => setError("")}
+        />
+      )}
 
-      {/* 4 Stat Cards */}
+      {/* Statistics */}
       <div className="dashboard-grid">
         <StatCard
           title="Today's Sales / आज की बिक्री"
@@ -177,117 +450,223 @@ const Dashboard = () => {
           color="primary"
           icon={IndianRupee}
         />
+
         <StatCard
           title="Today's Profit / आज का मुनाफा"
           value={stats.todayProfit}
           prefix="₹"
-          trend={12.4}
           color="success"
           icon={TrendingUp}
         />
+
         <StatCard
           title="Total Customers / कुल ग्राहक"
           value={stats.totalCustomers}
           color="info"
           icon={Users}
         />
+
         <StatCard
           title="Low Stock Items / कम स्टॉक"
-          value={stats.lowStockCount || lowStockAlerts.length}
+          value={stats.lowStockCount}
           suffix=" items"
           color="danger"
           icon={AlertTriangle}
         />
       </div>
 
-      {/* Sales Chart & Low Stock Alerts */}
+      {/* Sales Chart and Stock Alerts */}
       <div className="dashboard-split-grid">
-        {/* Sales Chart */}
         <div className="chart-container">
           <div className="chart-header">
             <div>
-              <div className="chart-title">Last 7 Days Sales Trend (₹)</div>
-              <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                Daily turnover and estimated margin
+              <div className="chart-title">
+                Last 7 Days Sales Trend (₹)
+              </div>
+
+              <div
+                style={{
+                  fontSize: "0.8rem",
+                  color: "var(--text-secondary)",
+                }}
+              >
+                Recorded sales and profit
               </div>
             </div>
-            <Link to="/reports" style={{ fontSize: '0.85rem', fontWeight: 600 }}>
-              Full Report <ArrowRight size={14} style={{ verticalAlign: 'middle' }} />
+
+            <Link
+              to="/reports"
+              style={{ fontSize: "0.85rem", fontWeight: 600 }}
+            >
+              Full Report <ArrowRight size={14} />
             </Link>
           </div>
 
-          <div className="chart-wrapper">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={salesChartData} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                <XAxis dataKey="day" stroke="#94a3b8" fontSize={12} tickLine={false} />
-                <YAxis
-                  stroke="#94a3b8"
-                  fontSize={12}
-                  tickLine={false}
-                  tickFormatter={(val) => `₹${val}`}
-                />
-                <Tooltip
-                  formatter={(value, name) => [`₹${value.toLocaleString('en-IN')}`, name === 'sales' ? 'Sales' : 'Profit']}
-                  contentStyle={{
-                    backgroundColor: '#ffffff',
-                    borderRadius: '8px',
-                    border: '1px solid var(--border)',
-                    boxShadow: 'var(--shadow-md)',
+          <div
+            className="chart-wrapper"
+            style={{ minHeight: "280px" }}
+          >
+            {salesChartData.length === 0 ? (
+              <div
+                style={{
+                  height: "280px",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: "0.75rem",
+                  textAlign: "center",
+                  color: "var(--text-secondary)",
+                  padding: "1rem",
+                }}
+              >
+                <TrendingUp size={32} />
+                <strong>No sales recorded yet</strong>
+                <span>
+                  Create your first bill to see the sales trend here.
+                </span>
+                <Link
+                  to="/billing"
+                  className="btn btn-primary btn-sm"
+                >
+                  Create First Bill
+                </Link>
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height={280}>
+                <LineChart
+                  data={salesChartData}
+                  margin={{
+                    top: 10,
+                    right: 20,
+                    left: 0,
+                    bottom: 0,
                   }}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="sales"
-                  name="sales"
-                  stroke="var(--primary)"
-                  strokeWidth={3}
-                  dot={{ r: 4, fill: 'var(--primary)' }}
-                  activeDot={{ r: 7 }}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="profit"
-                  name="profit"
-                  stroke="var(--success)"
-                  strokeWidth={2}
-                  strokeDasharray="4 4"
-                  dot={{ r: 3, fill: 'var(--success)' }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
+                >
+                  <CartesianGrid
+                    strokeDasharray="3 3"
+                    stroke="#e2e8f0"
+                  />
+
+                  <XAxis
+                    dataKey="day"
+                    stroke="#94a3b8"
+                    fontSize={12}
+                    tickLine={false}
+                  />
+
+                  <YAxis
+                    stroke="#94a3b8"
+                    fontSize={12}
+                    tickLine={false}
+                    tickFormatter={(value) =>
+                      `₹${Number(value).toLocaleString("en-IN")}`
+                    }
+                  />
+
+                  <Tooltip
+                    formatter={(value, name) => [
+                      `₹${money(value)}`,
+                      name === "sales" ? "Sales" : "Profit",
+                    ]}
+                  />
+
+                  <Line
+                    type="monotone"
+                    dataKey="sales"
+                    name="sales"
+                    stroke="var(--primary)"
+                    strokeWidth={3}
+                    dot={{ r: 4 }}
+                    activeDot={{ r: 7 }}
+                  />
+
+                  <Line
+                    type="monotone"
+                    dataKey="profit"
+                    name="profit"
+                    stroke="var(--success)"
+                    strokeWidth={2}
+                    strokeDasharray="4 4"
+                    dot={{ r: 3 }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            )}
           </div>
         </div>
 
-        {/* Low Stock Alerts */}
+        {/* Stock Alerts */}
         <div className="card">
           <div className="card-header">
-            <h3 className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--danger)' }}>
+            <h3
+              className="card-title"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "0.5rem",
+                color: "var(--danger)",
+              }}
+            >
               <AlertTriangle size={18} />
               Stock Alerts ({lowStockAlerts.length})
             </h3>
-            <Link to="/inventory" style={{ fontSize: '0.85rem', fontWeight: 600 }}>
+
+            <Link
+              to="/inventory"
+              style={{ fontSize: "0.85rem", fontWeight: 600 }}
+            >
               Manage
             </Link>
           </div>
-          <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', maxHeight: '320px', overflowY: 'auto' }}>
+
+          <div
+            className="card-body"
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: "0.75rem",
+              maxHeight: "320px",
+              overflowY: "auto",
+            }}
+          >
             {lowStockAlerts.length === 0 ? (
-              <p style={{ color: 'var(--text-secondary)', textAlign: 'center', margin: 'auto' }}>
-                Sabhi products ka stock theek hai! 👍
-              </p>
+              <div
+                style={{
+                  padding: "2rem 1rem",
+                  textAlign: "center",
+                  color: "var(--text-secondary)",
+                }}
+              >
+                <Package size={28} />
+                <p>No low-stock products found.</p>
+                <Link to="/inventory">Manage inventory</Link>
+              </div>
             ) : (
               lowStockAlerts.map((item) => (
-                <div key={item._id || item.id} className="alert-badge-item">
+                <div
+                  key={item._id || item.id}
+                  className="alert-badge-item"
+                >
                   <div className="stock-info">
-                    <span className="product-name">{item.name}</span>
+                    <span className="product-name">
+                      {item.name ||
+                        item.productName ||
+                        "Unnamed product"}
+                    </span>
+
                     <span className="stock-count">
-                      Available: <strong>{item.currentStock || item.stock} {item.unit || 'pcs'}</strong> (Min: {item.reorderLevel})
+                      Available:{" "}
+                      <strong>
+                        {getStock(item)} {item.unit || "pcs"}
+                      </strong>
+                      {" · "}Min: {item.reorderLevel ?? 0}
                     </span>
                   </div>
+
                   <Link
                     to="/inventory"
                     className="btn btn-outline btn-sm"
-                    style={{ backgroundColor: '#ffffff', fontSize: '0.75rem', padding: '0.25rem 0.5rem' }}
                   >
                     Restock
                   </Link>
@@ -298,19 +677,34 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {/* Recent Invoices & Pending Udhar */}
-      <div className="dashboard-split-grid" style={{ gridTemplateColumns: '1.4fr 1fr' }}>
-        {/* Recent Invoices Table */}
+      {/* Recent Invoices and Pending Udhar */}
+      <div
+        className="dashboard-split-grid"
+        style={{ gridTemplateColumns: "1.4fr 1fr" }}
+      >
+        {/* Recent Invoices */}
         <div className="card">
           <div className="card-header">
-            <h3 className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <h3
+              className="card-title"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "0.5rem",
+              }}
+            >
               <Receipt size={18} color="var(--primary)" />
-              Recent Invoices (ताज़ा बिल)
+              Recent Invoices (ताज़ा बिल)
             </h3>
-            <Link to="/billing" style={{ fontSize: '0.85rem', fontWeight: 600 }}>
+
+            <Link
+              to="/billing"
+              style={{ fontSize: "0.85rem", fontWeight: 600 }}
+            >
               View All
             </Link>
           </div>
+
           <div className="table-container">
             <table>
               <thead>
@@ -318,63 +712,215 @@ const Dashboard = () => {
                   <th>Bill #</th>
                   <th>Customer</th>
                   <th>Mode</th>
-                  <th style={{ textAlign: 'right' }}>Amount</th>
+                  <th>Status</th>
+                  <th style={{ textAlign: "right" }}>Amount</th>
+                  <th style={{ textAlign: "center" }}>Action</th>
                 </tr>
               </thead>
+
               <tbody>
-                {recentInvoices.map((inv) => (
-                  <tr key={inv._id}>
-                    <td style={{ fontWeight: 600, color: 'var(--primary)' }}>
-                      #{inv.invoiceNumber || inv._id.slice(-6)}
-                    </td>
-                    <td>{inv.customerName || 'Cash Sale'}</td>
-                    <td>
-                      <span className={`badge ${inv.paymentMode === 'credit' ? 'badge-danger' : inv.paymentMode === 'upi' ? 'badge-info' : 'badge-success'}`}>
-                        {inv.paymentMode || 'cash'}
-                      </span>
-                    </td>
-                    <td style={{ textAlign: 'right', fontWeight: 700 }}>
-                      ₹{Number(inv.totalAmount || inv.grandTotal || 0).toLocaleString('en-IN')}
+                {recentInvoices.length === 0 ? (
+                  <tr>
+                    <td
+                      colSpan={6}
+                      style={{
+                        textAlign: "center",
+                        padding: "2rem 1rem",
+                        color: "var(--text-secondary)",
+                      }}
+                    >
+                      No invoices yet. Bills you create will appear here.
+                      <br />
+                      <Link to="/billing">Create your first bill</Link>
                     </td>
                   </tr>
-                ))}
+                ) : (
+                  recentInvoices.map((invoice) => {
+                    const method = getPaymentMethod(invoice);
+                    const status = invoice.paymentStatus || "unknown";
+
+                    return (
+                      <tr
+                        key={
+                          invoice._id ||
+                          invoice.invoiceNumber
+                        }
+                      >
+                        <td
+                          style={{
+                            fontWeight: 600,
+                            color: "var(--primary)",
+                          }}
+                        >
+                          #
+                          {invoice.invoiceNumber ||
+                            String(invoice._id || "").slice(-6) ||
+                            "—"}
+                        </td>
+
+                        <td>
+                          {getCustomerName(invoice)}
+                          <div
+                            style={{
+                              fontSize: "0.75rem",
+                              color: "var(--text-secondary)",
+                            }}
+                          >
+                            {formatDate(
+                              invoice.createdAt || invoice.date
+                            )}
+                          </div>
+                        </td>
+
+                        <td>
+                          <span
+                            className={`badge ${
+                              method === "credit" ||
+                              status === "pending"
+                                ? "badge-danger"
+                                : method === "upi"
+                                  ? "badge-info"
+                                  : "badge-success"
+                            }`}
+                          >
+                            {method}
+                          </span>
+                        </td>
+
+                        <td>
+                          <span
+                            className={`badge ${
+                              status === "paid"
+                                ? "badge-success"
+                                : status === "draft"
+                                  ? "badge-warning"
+                                  : status === "pending" || status === "partial"
+                                    ? "badge-danger"
+                                    : "badge-info"
+                            }`}
+                          >
+                            {status}
+                          </span>
+                        </td>
+
+                        <td
+                          style={{
+                            textAlign: "right",
+                            fontWeight: 700,
+                          }}
+                        >
+                          ₹{money(getInvoiceAmount(invoice))}
+                        </td>
+
+                        <td style={{ textAlign: "center" }}>
+                          <button
+                            type="button"
+                            className="btn btn-outline btn-sm"
+                            style={{
+                              color: "var(--danger)",
+                              borderColor: "var(--danger)",
+                              padding: "0.25rem 0.5rem",
+                            }}
+                            disabled={deletingId === invoice._id}
+                            onClick={() =>
+                              handleDeleteInvoice(invoice)
+                            }
+                          >
+                            <Trash2 size={14} />
+                            {deletingId === invoice._id
+                              ? " ..."
+                              : ""}
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
               </tbody>
             </table>
           </div>
         </div>
 
-        {/* Pending Payments / Udhar */}
+        {/* Pending Udhar */}
         <div className="card">
           <div className="card-header">
-            <h3 className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--warning)' }}>
+            <h3
+              className="card-title"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "0.5rem",
+                color: "var(--warning)",
+              }}
+            >
               <BookOpen size={18} />
               Pending Udhar (उधार वसूली)
             </h3>
-            <Link to="/khata" style={{ fontSize: '0.85rem', fontWeight: 600 }}>
+
+            <Link
+              to="/khata"
+              style={{ fontSize: "0.85rem", fontWeight: 600 }}
+            >
               Khata Book
             </Link>
           </div>
-          <div className="card-body" style={{ padding: '0.75rem' }}>
+
+          <div className="card-body" style={{ padding: "0.75rem" }}>
             <div className="recent-list">
-              {pendingKhata.map((customer) => (
-                <div key={customer._id} className="recent-item">
-                  <div className="recent-item-info">
-                    <span className="recent-item-title">{customer.name}</span>
-                    <span className="recent-item-subtitle">{customer.phone}</span>
-                  </div>
-                  <div style={{ textAlign: 'right' }}>
-                    <div style={{ color: 'var(--danger)', fontWeight: 700, fontSize: '0.95rem' }}>
-                      ₹{(customer.balance || customer.creditBalance || 0).toLocaleString('en-IN')}
-                    </div>
-                    <Link
-                      to="/khata"
-                      style={{ fontSize: '0.75rem', color: 'var(--primary)', fontWeight: 600 }}
-                    >
-                      Remind / वसूलें
-                    </Link>
-                  </div>
+              {pendingKhata.length === 0 ? (
+                <div
+                  style={{
+                    padding: "2rem 1rem",
+                    textAlign: "center",
+                    color: "var(--text-secondary)",
+                  }}
+                >
+                  <BookOpen size={28} />
+                  <p>No pending payments recorded.</p>
+                  <Link to="/khata">Open Khata Book</Link>
                 </div>
-              ))}
+              ) : (
+                pendingKhata.map((customer) => (
+                  <div
+                    key={customer._id || customer.id}
+                    className="recent-item"
+                  >
+                    <div className="recent-item-info">
+                      <span className="recent-item-title">
+                        {customer.name ||
+                          customer.customerName}
+                      </span>
+
+                      <span className="recent-item-subtitle">
+                        {customer.phone || "No phone number"}
+                      </span>
+                    </div>
+
+                    <div style={{ textAlign: "right" }}>
+                      <div
+                        style={{
+                          color: "var(--danger)",
+                          fontWeight: 700,
+                          fontSize: "0.95rem",
+                        }}
+                      >
+                        ₹{money(getCustomerBalance(customer))}
+                      </div>
+
+                      <Link
+                        to="/khata"
+                        style={{
+                          fontSize: "0.75rem",
+                          color: "var(--primary)",
+                          fontWeight: 600,
+                        }}
+                      >
+                        View Khata
+                      </Link>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </div>

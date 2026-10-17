@@ -12,12 +12,14 @@
 }
 
 .ds-landing {
+  position: relative;
+  width: 100%;
+  min-height: 100vh;
   color: var(--ds-ink);
   background: #fff;
   font-family: 'DM Sans', sans-serif;
-  overflow: hidden;
+  overflow: visible;
 }
-
 .ds-landing * { box-sizing: border-box; }
 .ds-landing a { text-decoration: none; }
 .ds-navbar {
@@ -343,4 +345,30 @@
   .ds-footer-links { grid-column: 1; grid-row: auto; gap: 17px; }
   .ds-footer > p { grid-column: 1; grid-row: auto; line-height: 1.7; }
   .ds-copyright { grid-column: 1; line-height: 1.6; }
+}
+
+/* Fix landing page scrolling */
+html:has(.ds-landing),
+body:has(.ds-landing) {
+  height: auto;
+  min-height: 100%;
+  overflow-x: clip;
+  overflow-y: auto;
+}
+
+body:has(.ds-landing) #root {
+  height: auto;
+  min-height: 100vh;
+  overflow: visible;
+}
+
+.ds-landing {
+  height: auto;
+  min-height: 100vh;
+  overflow: visible;
+}
+
+.ds-landing main {
+  height: auto;
+  overflow: visible;
 }

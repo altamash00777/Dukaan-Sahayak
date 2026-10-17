@@ -70,6 +70,10 @@ export const invoices = {
   confirmInvoice: (id, paymentData = {}) => api.post(`/invoices/${id}/confirm`, paymentData),
   getAll: (params = {}) => api.get('/invoices', { params }),
   getById: (id) => api.get(`/invoices/${id}`),
+  
+deleteDraft: (id) => api.delete(`/invoices/${id}`),
+  deleteInvoice: (id) => api.delete(`/invoices/${id}`),
+
   getPDFUrl: (id) => `/api/invoices/${id}/pdf`,
 };
 

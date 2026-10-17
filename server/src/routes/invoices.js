@@ -1,8 +1,11 @@
+
 const express = require('express');
 const router = express.Router();
+
 const invoiceController = require('../controllers/invoiceController');
 const { verifyToken } = require('../middleware/authMiddleware');
 const validateRequest = require('../middleware/validateRequest');
+
 const {
   createDraftSchema,
   confirmInvoiceSchema,
@@ -11,9 +14,23 @@ const {
 router.use(verifyToken);
 
 router.get('/', invoiceController.getAll);
-router.get('/:id', invoiceController.getById);
+
+router.post(
+  '/draft',
+  validateRequest(createDraftSchema),
+  invoiceController.createDraft
+);
+
 router.get('/:id/pdf', invoiceController.getPDF);
-router.post('/draft', validateRequest(createDraftSchema), invoiceController.createDraft);
-router.post('/:id/confirm', validateRequest(confirmInvoiceSchema), invoiceController.confirmInvoice);
+
+router.post(
+  '/:id/confirm',
+  validateRequest(confirmInvoiceSchema),
+  invoiceController.confirmInvoice
+);
+
+router.delete('/:id', invoiceController.deleteInvoice);
+
+router.get('/:id', invoiceController.getById);
 
 module.exports = router;

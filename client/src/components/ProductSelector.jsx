@@ -89,22 +89,52 @@ const ProductSelector = ({ onSelect, selectedItems = [], onRemove, onUpdateQuant
     inputRef.current?.focus();
   };
 
-  // ── Manual add — NO unit field ────────────────────────────────────
-  const handleAddManual = () => {
+  // ── Manual add — save product to DB, then use real _id ─────────────
+  const handleAddManual = async () => {
     if (!manualProduct.name.trim() || !manualProduct.price) return;
-    const fakeProduct = {
-      _id:          'manual-' + Date.now(),
-      name:         manualProduct.name.trim(),
-      sellingPrice: parseFloat(manualProduct.price) || 0,
-      unit:         'pcs',
-      currentStock: 999,
-      isManual:     true,
-    };
-    onSelect(fakeProduct);
-    setLastSelected(null);  // don't show inventory card for manual items
+
+    const price = parseFloat(manualProduct.price) || 0;
+    let product;
+
+    try {
+      // Save product to inventory database first
+      const res = await productsApi.create({
+        name: manualProduct.name.trim(),
+        sellingPrice: price,
+        purchaseCost: price,
+        unit: 'pcs',
+        currentStock: 999,
+        reorderLevel: 10,
+        category: 'General',
+        taxRate: 0,
+      });
+      const saved = res.data?.data;
+      if (saved?._id) {
+        product = saved;
+      }
+    } catch (err) {
+      console.error('Could not save product to DB:', err);
+    }
+
+    // Use real DB product if saved, otherwise fallback
+    if (!product) {
+      product = {
+        _id:          'manual-' + Date.now(),
+        name:         manualProduct.name.trim(),
+        sellingPrice: price,
+        unit:         'pcs',
+        currentStock: 999,
+        isManual:     true,
+      };
+    }
+
+    onSelect(product);
+    setLastSelected(null);
     setManualProduct({ name: '', price: '' });
     setShowManualAdd(false);
     setSearchTerm('');
+    // Reload inventory so the new product appears in search
+    setInventoryLoaded(false);
   };
 
   // Dropdown display list

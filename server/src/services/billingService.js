@@ -31,17 +31,28 @@ const createInvoiceDraft = async (shopId, customerId, items, discountAmount = 0,
   };
 
   let validCustomerId = null;
-  if (customerId) {
-    const customer = await Customer.findOne({ _id: customerId, shopId });
-    if (customer) {
-      validCustomerId = customer._id;
-      customerSnapshot = {
-        name: customer.name,
-        phone: customer.phone,
-        address: customer.address || '',
-      };
-    }
+if (customerId) {
+  if (!mongoose.isValidObjectId(customerId)) {
+    throw new Error('Invalid customer ID');
   }
+
+  const customer = await Customer.findOne({
+    _id: customerId,
+    shopId,
+  });
+
+  if (!customer) {
+    throw new Error('Customer not found in this shop');
+  }
+
+  validCustomerId = customer._id;
+
+  customerSnapshot = {
+    name: customer.name,
+    phone: customer.phone || '',
+    address: customer.address || '',
+  };
+}
 
   // 2. Fetch all products in items
   const productIds = items.map((i) => i.productId);
