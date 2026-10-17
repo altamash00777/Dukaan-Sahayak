@@ -1,7 +1,6 @@
 
 # 🛒 Dukaan Sahayak — AI-Powered Shop Assistant
 
-deployed link-https://dukaan-sahayak.vercel.app/
 
 > *Apni Dukaan, Digital Banao*
 
