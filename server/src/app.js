@@ -1,3 +1,4 @@
+
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
@@ -23,12 +24,16 @@ const whatsappRoutes = require('./routes/whatsapp');
 
 const app = express();
 
+// Configure proxy support for Render
+app.set('trust proxy', 1);
+
 // Security HTTP headers
 app.use(helmet());
 
 // CORS configuration
 const allowedOrigins = [
-  process.env.CLIENT_URL || 'http://localhost:5173',
+  process.env.CLIENT_URL || 
+  'http://localhost:5173',
   'http://localhost:3000',
   'http://127.0.0.1:5173',
 ];
@@ -36,11 +41,11 @@ const allowedOrigins = [
 app.use(
   cors({
     origin: (origin, callback) => {
-      // Allow requests with no origin (e.g. mobile apps, curl, webhooks)
       if (!origin || allowedOrigins.includes(origin)) {
         return callback(null, true);
       }
-      return callback(null, true); // Permissive in dev, adjust as needed
+
+      return callback(new Error('Origin not allowed by CORS'));
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
@@ -55,28 +60,15 @@ if (process.env.NODE_ENV === 'development') {
   app.use(morgan('combined'));
 }
 
-// Global Rate Limiting: 100 requests per 15 minutes per IP
-const globalLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 100,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: {
-    success: false,
-    message: 'Too many requests from this IP, please try again after 15 minutes.',
-  },
-});
-app.use(globalLimiter);
-
-// Stricter Rate Limiting for Auth routes: 20 attempts per 15 minutes
+//adding rate limit only on authentication 
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 20,
+  limit: 20,
   standardHeaders: true,
   legacyHeaders: false,
   message: {
     success: false,
-    message: 'Too many authentication attempts, please try again after 15 minutes.',
+    message: 'Too many authentication attempts. Please try again after 15 minutes.',
   },
 });
 
@@ -94,7 +86,6 @@ app.get('/health', (req, res) => {
   });
 });
 
-// API Routes Mounting
 app.use('/api/auth', authLimiter, authRoutes);
 app.use('/api/shop', shopRoutes);
 app.use('/api/products', productRoutes);
@@ -108,7 +99,6 @@ app.use('/api/assistant', assistantRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/whatsapp', whatsappRoutes);
 
-// 404 Route Handler
 app.use((req, res) => {
   res.status(404).json({
     success: false,
@@ -116,7 +106,6 @@ app.use((req, res) => {
   });
 });
 
-// Global Error Handler Middleware
 app.use(errorMiddleware);
 
 module.exports = app;
