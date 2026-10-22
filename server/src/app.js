@@ -31,12 +31,15 @@ app.set('trust proxy', 1);
 app.use(helmet());
 
 // CORS configuration
+
 const allowedOrigins = [
-  process.env.CLIENT_URL || 
+  process.env.CLIENT_URL,
+  'https://dukaan-sahayak.altkhan773.workers.dev',
   'http://localhost:5173',
   'http://localhost:3000',
   'http://127.0.0.1:5173',
-];
+].filter(Boolean);
+
 
 app.use(
   cors({
